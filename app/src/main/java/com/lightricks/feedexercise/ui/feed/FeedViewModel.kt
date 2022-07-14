@@ -36,7 +36,7 @@ open class FeedViewModel : ViewModel() {
  * dependencies into [FeedViewModel] in the future, then this is the place to do it.
  */
 class FeedViewModelFactory : ViewModelProvider.Factory {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (!modelClass.isAssignableFrom(FeedViewModel::class.java)) {
             throw IllegalArgumentException("factory used with a wrong class")
         }
