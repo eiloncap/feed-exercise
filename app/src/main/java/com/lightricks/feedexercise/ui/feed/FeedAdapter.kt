@@ -15,7 +15,7 @@ import com.lightricks.feedexercise.databinding.FeedItemBinding
  * This class populates the [RecyclerView] with [FeedItem]s.
  * Item layout file: feed_item.xml
  */
-class FeedAdapter: RecyclerView.Adapter<FeedItemHolder>() {
+class FeedAdapter : RecyclerView.Adapter<FeedItemHolder>() {
     var items: List<FeedItem> = emptyList()
         set(value) {
             val diff = DiffUtil.calculateDiff(FeedDiffer(field, value))
@@ -53,8 +53,10 @@ class FeedItemHolder(val binding: FeedItemBinding) : RecyclerView.ViewHolder(bin
 /**
  * This class helps to calculate the difference between two lists.
  */
-class FeedDiffer(private val oldList: List<FeedItem>,
-                 private val newList: List<FeedItem>): DiffUtil.Callback() {
+class FeedDiffer(
+    private val oldList: List<FeedItem>,
+    private val newList: List<FeedItem>
+) : DiffUtil.Callback() {
     override fun getOldListSize(): Int {
         return oldList.size
     }

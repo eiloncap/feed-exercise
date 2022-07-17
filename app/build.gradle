@@ -34,6 +34,25 @@ android {
 }
 
 dependencies {
+    def room_version = '2.4.2'
+    def retrofit_version = '2.9.0'
+    def moshi_version = '1.12.0'
+    def glide_version = '4.13.0'
+
+    // Room persistence library
+    implementation "androidx.room:room-runtime:$room_version"
+    implementation "androidx.room:room-rxjava2:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+    // Retrofit HTTP client
+    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofit_version"
+    implementation "com.squareup.retrofit2:converter-moshi:$retrofit_version"
+    // Moshi JSON library
+    implementation "com.squareup.moshi:moshi:$moshi_version"
+    implementation "com.squareup.moshi:moshi-kotlin:$moshi_version"
+    // RxJava for asynchronous programming
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.21'
     // Android X
     implementation 'androidx.core:core-ktx:1.8.0'
     implementation 'androidx.appcompat:appcompat:1.4.2'
@@ -44,8 +63,8 @@ dependencies {
     // Material design library
     implementation 'com.google.android.material:material:1.6.1'
     // Glide image loading framework
-    implementation 'com.github.bumptech.glide:glide:4.13.0'
-    kapt 'com.github.bumptech.glide:compiler:4.13.0'
+    implementation "com.github.bumptech.glide:glide:$glide_version"
+    kapt "com.github.bumptech.glide:compiler:$glide_version"
     // Testing frameworks
     androidTestImplementation 'androidx.test:core:1.4.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
