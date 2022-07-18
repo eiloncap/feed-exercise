@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-// todo: ask why do we need the Entity separate to the FeedItem
+// todo: ask why do we need the Entity separate from the FeedItem
 
 @Entity(tableName = "feed")
 data class FeedEntity(

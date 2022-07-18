@@ -1,5 +1,6 @@
 package com.lightricks.feedexercise.data
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
 import com.lightricks.feedexercise.database.FeedDatabase
@@ -8,7 +9,6 @@ import com.lightricks.feedexercise.network.FeedApiService
 import com.lightricks.feedexercise.network.GetFeedResponse
 import io.reactivex.Completable
 import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 
 /**
@@ -17,10 +17,11 @@ import io.reactivex.schedulers.Schedulers
  */
 class FeedRepository(private val apiService: FeedApiService, private val db: FeedDatabase) {
 
-    // todo: should I dispose them? when?
-    private val compositeDisposable = CompositeDisposable()
     val feedItems: LiveData<List<FeedItem>> =
-        Transformations.map(db.feedDao().getAll()) { it.toFeedItems() }
+        Transformations.map(db.feedDao().getAll()) {
+            Log.d("eilon", "list = $it")
+            it.toFeedItems()
+        }
 
     fun refresh(): Completable {
         return apiService.getFeed()
@@ -28,11 +29,10 @@ class FeedRepository(private val apiService: FeedApiService, private val db: Fee
             .observeOn(AndroidSchedulers.mainThread())
             .flatMapCompletable { feedResponse ->
                 handleResponse(feedResponse)
-                return@flatMapCompletable Completable.complete()
             }
     }
 
-    private fun handleResponse(feedResponse: GetFeedResponse) {
+    private fun handleResponse(feedResponse: GetFeedResponse): Completable {
         val feedEntities = feedResponse.templatesMetadata.map {
             FeedEntity(
                 it.id,
@@ -40,13 +40,10 @@ class FeedRepository(private val apiService: FeedApiService, private val db: Fee
                 it.isPremium
             )
         }
-
-        val disposable = db.feedDao().insertAll(feedEntities)
+        return db.feedDao().insertAll(feedEntities)
             .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
             .onErrorComplete()
-            .subscribe()
-
-        compositeDisposable.add(disposable)
     }
 }
 

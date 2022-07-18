@@ -21,6 +21,7 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
     private val networkErrorEvent = MutableLiveData<Event<String>>()
     private val feedApiService: FeedApiService = FeedApiService.getFeedApiService()
     private lateinit var db: FeedDatabase
+    // todo: should I dispose them? when?
     private val compositeDisposable = CompositeDisposable()
     private val feedRepository: FeedRepository
 

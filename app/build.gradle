@@ -34,11 +34,19 @@ android {
 }
 
 dependencies {
+    def androidx_test_version = '1.4.0'
     def room_version = '2.4.2'
     def retrofit_version = '2.9.0'
     def moshi_version = '1.12.0'
     def glide_version = '4.13.0'
 
+    // Testing frameworks
+    androidTestImplementation "androidx.test:core:$androidx_test_version"
+    androidTestImplementation "androidx.test:runner:$androidx_test_version"
+    androidTestImplementation "androidx.test:rules:$androidx_test_version"
+    androidTestImplementation "androidx.test.ext:junit:1.1.3"
+    androidTestImplementation "androidx.test.ext:truth:$androidx_test_version"
+    androidTestImplementation "androidx.arch.core:core-testing:2.1.0"
     // Room persistence library
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-rxjava2:$room_version"
@@ -65,8 +73,4 @@ dependencies {
     // Glide image loading framework
     implementation "com.github.bumptech.glide:glide:$glide_version"
     kapt "com.github.bumptech.glide:compiler:$glide_version"
-    // Testing frameworks
-    androidTestImplementation 'androidx.test:core:1.4.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.ext:truth:1.4.0'
 }
