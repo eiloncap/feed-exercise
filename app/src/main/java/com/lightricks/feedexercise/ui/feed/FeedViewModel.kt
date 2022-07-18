@@ -4,15 +4,11 @@ import android.app.Application
 import androidx.lifecycle.*
 import androidx.room.Room
 import com.lightricks.feedexercise.data.FeedItem
+import com.lightricks.feedexercise.data.FeedRepository
 import com.lightricks.feedexercise.database.FeedDatabase
-import com.lightricks.feedexercise.database.FeedEntity
 import com.lightricks.feedexercise.network.FeedApiService
-import com.lightricks.feedexercise.network.FeedApiServiceProvider
-import com.lightricks.feedexercise.network.GetFeedResponse
 import com.lightricks.feedexercise.util.Event
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.schedulers.Schedulers
 
 
 /**
@@ -23,9 +19,10 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
     private val isEmpty = MutableLiveData<Boolean>()
     private val feedItems = MediatorLiveData<List<FeedItem>>()
     private val networkErrorEvent = MutableLiveData<Event<String>>()
-    private val feedApiService: FeedApiService = FeedApiServiceProvider.getFeedApiService()
+    private val feedApiService: FeedApiService = FeedApiService.getFeedApiService()
     private lateinit var db: FeedDatabase
     private val compositeDisposable = CompositeDisposable()
+    private val feedRepository: FeedRepository
 
     fun getIsLoading(): LiveData<Boolean> = isLoading
     fun getIsEmpty(): LiveData<Boolean> = isEmpty
@@ -34,6 +31,8 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
 
     init {
         setupDb(application)
+        feedRepository = FeedRepository(feedApiService, db)
+        setUpFeedObserver()
         refresh()
     }
 
@@ -44,45 +43,22 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
         ).build()
     }
 
-    // todo: should I dispose them? when?
+    private fun setUpFeedObserver() {
+        feedItems.addSource(feedRepository.feedItems) {
+            feedItems.value = it
+            isEmpty.value = it.isEmpty()
+        }
+    }
+
     fun refresh() {
         isLoading.value = true
-        val disposable = feedApiService.getFeed()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ feedResponse ->
-                handleResponse(feedResponse)
+
+        val disposable = feedRepository.refresh()
+            .subscribe({
+                isLoading.value = false
             }, { error ->
                 handleNetworkError(error)
             })
-        compositeDisposable.add(disposable)
-    }
-
-    private fun handleResponse(feedResponse: GetFeedResponse) {
-        val feedEntities = feedResponse.templatesMetadata.map {
-            FeedEntity(
-                it.id,
-                FeedApiServiceProvider.thumbnailURIPrefix + it.templateThumbnailURI,
-                it.isPremium
-            )
-        }
-        feedResponse.templatesMetadata.map {
-            FeedItem(
-                it.id,
-                FeedApiServiceProvider.thumbnailURIPrefix + it.templateThumbnailURI,
-                it.isPremium
-            )
-        }.toList()
-            .let {
-                isLoading.value = false
-                isEmpty.value = it.isEmpty()
-                feedItems.value = it
-            }
-
-        val disposable = db.feedDao().insertAll(feedEntities)
-            .subscribeOn(Schedulers.io())
-            .subscribe()
-
         compositeDisposable.add(disposable)
     }
 

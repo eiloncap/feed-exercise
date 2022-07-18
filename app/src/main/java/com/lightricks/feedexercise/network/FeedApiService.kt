@@ -12,9 +12,7 @@ import retrofit2.http.GET
 interface FeedApiService {
     @GET("Android/demo/feed.json")
     fun getFeed(): Single<GetFeedResponse>
-}
 
-class FeedApiServiceProvider {
     companion object {
 
         private val moshi = Moshi.Builder()
