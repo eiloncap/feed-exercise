@@ -28,8 +28,6 @@ interface FeedApiService {
         const val thumbnailURIPrefix =
             "https://assets.swishvideoapp.com/Android/demo/catalog/thumbnails/"
 
-        fun getFeedApiService(): FeedApiService {
-            return retrofit.create(FeedApiService::class.java)
-        }
+        val service: FeedApiService = retrofit.create(FeedApiService::class.java)
     }
 }

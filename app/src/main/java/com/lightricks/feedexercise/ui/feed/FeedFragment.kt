@@ -1,7 +1,6 @@
 package com.lightricks.feedexercise.ui.feed
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,10 +15,8 @@ import com.google.android.material.snackbar.BaseTransientBottomBar.LENGTH_LONG
 import com.google.android.material.snackbar.Snackbar
 import com.lightricks.feedexercise.R
 import com.lightricks.feedexercise.database.FeedDatabase
-import com.lightricks.feedexercise.database.FeedEntity
 import com.lightricks.feedexercise.databinding.FeedFragmentBinding
-import io.reactivex.Completable
-import io.reactivex.schedulers.Schedulers
+import com.lightricks.feedexercise.network.FeedApiService
 
 /**
  * This Fragment shows the feed grid. The feed consists of template thumbnail images.
@@ -41,6 +38,7 @@ class FeedFragment : Fragment() {
         return dataBinding.root
     }
 
+    // todo: wait for Boris to answer
     private fun setupViewModel() {
         viewModel = ViewModelProvider(
             this,

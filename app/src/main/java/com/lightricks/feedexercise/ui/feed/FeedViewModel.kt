@@ -1,29 +1,26 @@
 package com.lightricks.feedexercise.ui.feed
 
-import android.app.Application
+import android.content.Context
 import androidx.lifecycle.*
-import androidx.room.Room
 import com.lightricks.feedexercise.data.FeedItem
 import com.lightricks.feedexercise.data.FeedRepository
-import com.lightricks.feedexercise.database.FeedDatabase
+import com.lightricks.feedexercise.database.FeedDatabaseProvider
 import com.lightricks.feedexercise.network.FeedApiService
 import com.lightricks.feedexercise.util.Event
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 
 
 /**
  * This view model manages the data for [FeedFragment].
  */
-open class FeedViewModel(application: Application) : AndroidViewModel(application) {
+open class FeedViewModel(private val feedRepository: FeedRepository) : ViewModel() {
+
     private val isLoading = MutableLiveData<Boolean>()
     private val isEmpty = MutableLiveData<Boolean>()
     private val feedItems = MediatorLiveData<List<FeedItem>>()
     private val networkErrorEvent = MutableLiveData<Event<String>>()
-    private val feedApiService: FeedApiService = FeedApiService.getFeedApiService()
-    private lateinit var db: FeedDatabase
-    // todo: should I dispose them? when?
     private val compositeDisposable = CompositeDisposable()
-    private val feedRepository: FeedRepository
 
     fun getIsLoading(): LiveData<Boolean> = isLoading
     fun getIsEmpty(): LiveData<Boolean> = isEmpty
@@ -31,17 +28,8 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
     fun getNetworkErrorEvent(): LiveData<Event<String>> = networkErrorEvent
 
     init {
-        setupDb(application)
-        feedRepository = FeedRepository(feedApiService, db)
         setUpFeedObserver()
         refresh()
-    }
-
-    private fun setupDb(application: Application) {
-        db = Room.databaseBuilder(
-            application,
-            FeedDatabase::class.java, "feed_data_base"
-        ).build()
     }
 
     private fun setUpFeedObserver() {
@@ -55,6 +43,7 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
         isLoading.value = true
 
         val disposable = feedRepository.refresh()
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe({
                 isLoading.value = false
             }, { error ->
@@ -66,11 +55,10 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
     private fun handleNetworkError(error: Throwable?) {
         isLoading.value = false
         isEmpty.value = true
-        networkErrorEvent.value = Event(error?.message ?: "")
+        networkErrorEvent.value = Event(error?.message ?: "Network error")
     }
 
     override fun onCleared() {
-        compositeDisposable.clear()
         compositeDisposable.dispose()
         super.onCleared()
     }
@@ -81,13 +69,15 @@ open class FeedViewModel(application: Application) : AndroidViewModel(applicatio
  * It's not necessary to use this factory at this stage. But if we will need to inject
  * dependencies into [FeedViewModel] in the future, then this is the place to do it.
  */
-class FeedViewModelFactory(private var application: Application) : ViewModelProvider.Factory {
+class FeedViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (!modelClass.isAssignableFrom(FeedViewModel::class.java)) {
             throw IllegalArgumentException("factory used with a wrong class")
         }
+        val feedRepository =
+            FeedRepository(FeedApiService.service, FeedDatabaseProvider.getDatabase(context))
         @Suppress("UNCHECKED_CAST")
-        return FeedViewModel(application) as T
+        return FeedViewModel(feedRepository) as T
     }
 }
