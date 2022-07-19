@@ -1,9 +1,9 @@
 package com.lightricks.feedexercise.ui.feed
 
+import android.content.Context
 import androidx.lifecycle.*
 import com.lightricks.feedexercise.data.FeedItem
 import com.lightricks.feedexercise.util.Event
-import java.lang.IllegalArgumentException
 
 /**
  * This view model manages the data for [FeedFragment].
@@ -35,7 +35,7 @@ open class FeedViewModel : ViewModel() {
  * It's not necessary to use this factory at this stage. But if we will need to inject
  * dependencies into [FeedViewModel] in the future, then this is the place to do it.
  */
-class FeedViewModelFactory : ViewModelProvider.Factory {
+class FeedViewModelFactory(private val context: Context) : ViewModelProvider.NewInstanceFactory() {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (!modelClass.isAssignableFrom(FeedViewModel::class.java)) {
             throw IllegalArgumentException("factory used with a wrong class")
