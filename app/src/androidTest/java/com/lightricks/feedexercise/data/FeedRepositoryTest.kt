@@ -1,7 +1,6 @@
 package com.lightricks.feedexercise.data
 
 import android.content.Context
-import android.util.Log
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
@@ -10,9 +9,16 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.lightricks.feedexercise.database.FeedDatabase
-import com.lightricks.feedexercise.database.FeedEntity
+import com.lightricks.feedexercise.database.FeedItemEntity
 import com.lightricks.feedexercise.network.FeedApiService
+import com.lightricks.feedexercise.network.GetFeedResponse
 import com.lightricks.feedexercise.network.MockFeedApiService
+import com.lightricks.feedexercise.network.MockNetworkException
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okio.buffer
+import okio.source
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -28,19 +34,36 @@ class FeedRepositoryTest {
     var instantTaskExecutorRule = InstantTaskExecutorRule()
 
     private lateinit var db: FeedDatabase
-    private lateinit var feedApiService: FeedApiService
+    private lateinit var feedApiService: MockFeedApiService
+    private lateinit var expectedFeedItemEntityList: List<FeedItemEntity>
 
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         createDb(context)
         createApiService(context)
+        createExpectedList(context)
+    }
+
+    private fun createExpectedList(context: Context) {
+        val moshi = Moshi.Builder()
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
+        val jsonAdapter: JsonAdapter<GetFeedResponse> = moshi.adapter(GetFeedResponse::class.java)
+        val feedResponse = jsonAdapter.fromJson(
+            context.assets.open("get_feed_response.json").source().buffer()
+        )
+        expectedFeedItemEntityList = feedResponse?.templatesMetadata?.map {
+            FeedItemEntity(
+                it.id,
+                FeedApiService.thumbnailURIPrefix + it.templateThumbnailURI,
+                it.isPremium
+            )
+        } ?: emptyList()
     }
 
     private fun createDb(context: Context) {
-        db = Room.inMemoryDatabaseBuilder(
-            context, FeedDatabase::class.java
-        ).build()
+        db = Room.inMemoryDatabaseBuilder(context, FeedDatabase::class.java).build()
     }
 
     private fun createApiService(context: Context) {
@@ -48,31 +71,38 @@ class FeedRepositoryTest {
     }
 
     @Test
-    fun refreshMust_saveFeedToDatabase() {
+    fun refresh_whenFetchDataFromNetwork_thenSaveFeedToDatabase() {
         val feedRepository = FeedRepository(feedApiService, db)
 
         feedRepository.feedItems.blockingObserve()
-        assertThat(feedRepository.feedItems.value?.size).isEqualTo(0)
+        assertThat(db.feedDao().count()).isEqualTo(0)
         feedRepository.refresh().test().await()
         feedRepository.feedItems.blockingObserve()
-        assertThat(feedRepository.feedItems.value?.size).isEqualTo(db.feedDao().count())
+
+        val dbFeedItemsLiveData = db.feedDao().getAll()
+        dbFeedItemsLiveData.blockingObserve()
+        assertThat(dbFeedItemsLiveData.value)
+            .containsExactly(*feedApiService.expectedFeedItemEntities)
     }
 
     @Test
-    fun feedItemsMust_containFeedFromDatabase() {
+    fun refresh_whenNetworkError_thenTheErrorIsPassed() {
         val feedRepository = FeedRepository(feedApiService, db)
-
-        feedRepository.refresh().test().await()
-        feedRepository.feedItems.blockingObserve()
-        val expectedListValues = getFeedItemsFromDb(db.feedDao().getAll())
-        assertThat(feedRepository.feedItems.value)
-            .containsExactly(*expectedListValues)
+        feedApiService.throwErrorOnNextGetFeed()
+        feedRepository.refresh().test().await().assertError(MockNetworkException::class.java)
     }
 
-    private fun getFeedItemsFromDb(ld: LiveData<List<FeedEntity>>): Array<FeedItem> {
-        ld.blockingObserve()
-        return ld.value?.map { FeedItem(it.id, it.thumbnailUrl, it.isPremium) }?.toTypedArray()
-            ?: arrayOf()
+    @Test
+    fun feedItems_whenFeedItemsAddedToDataBase_thenFeedItemsContainFeedFromDatabase() {
+        val feedRepository = FeedRepository(feedApiService, db)
+        feedRepository.feedItems.blockingObserve()
+        assertThat(feedRepository.feedItems.value?.size).isEqualTo(0)
+
+        db.feedDao().insertAll(expectedFeedItemEntityList).test().await()
+        val expectedListValues =
+            feedApiService.expectedFeedItemEntities.asList().toFeedItems().toTypedArray()
+        feedRepository.feedItems.blockingObserve()
+        assertThat(feedRepository.feedItems.value).containsExactly(*expectedListValues)
     }
 
     @After

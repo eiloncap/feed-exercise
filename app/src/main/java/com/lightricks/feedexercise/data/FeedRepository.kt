@@ -1,10 +1,9 @@
 package com.lightricks.feedexercise.data
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Transformations
 import com.lightricks.feedexercise.database.FeedDatabase
-import com.lightricks.feedexercise.database.FeedEntity
+import com.lightricks.feedexercise.database.FeedItemEntity
 import com.lightricks.feedexercise.network.FeedApiService
 import com.lightricks.feedexercise.network.GetFeedResponse
 import io.reactivex.Completable
@@ -19,14 +18,12 @@ class FeedRepository(private val apiService: FeedApiService, private val db: Fee
 
     val feedItems: LiveData<List<FeedItem>> =
         Transformations.map(db.feedDao().getAll()) {
-            Log.d("eilon", "list = $it")
             it.toFeedItems()
         }
 
     fun refresh(): Completable {
         return apiService.getFeed()
             .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
             .flatMapCompletable { feedResponse ->
                 handleResponse(feedResponse)
             }
@@ -34,7 +31,7 @@ class FeedRepository(private val apiService: FeedApiService, private val db: Fee
 
     private fun handleResponse(feedResponse: GetFeedResponse): Completable {
         val feedEntities = feedResponse.templatesMetadata.map {
-            FeedEntity(
+            FeedItemEntity(
                 it.id,
                 FeedApiService.thumbnailURIPrefix + it.templateThumbnailURI,
                 it.isPremium
@@ -43,10 +40,9 @@ class FeedRepository(private val apiService: FeedApiService, private val db: Fee
         return db.feedDao().insertAll(feedEntities)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .onErrorComplete()
     }
 }
 
-private fun List<FeedEntity>.toFeedItems(): List<FeedItem> {
+fun List<FeedItemEntity>.toFeedItems(): List<FeedItem> {
     return this.map { FeedItem(it.id, it.thumbnailUrl, it.isPremium) }
 }
